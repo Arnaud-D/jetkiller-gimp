@@ -26,17 +26,28 @@ Once you have a working installation, install the plugin by following the
 procedure for Python plugins explained on 
 [this page](https://en.wikibooks.org/wiki/GIMP/Installing_Plugins).
 
+The plugin has some dependencies that might not be included with GIMP:
+
+* matplotlib,
+* numpy.
+
 
 ## Usage
 
 In GIMP, Jet Killer can be found under *Filters > Enhance > Jet Killer*.
 
-It processes the active layer and outputs the result to a new layer.
+The popup dialog let you choose the output colormap for the processing. The input
+colormap is always supposed to be `jet`.
+
+You can launch the processing by clicking on the right button, or close
+the plugin with the left button. You can of course also close the plugin by
+closing the dialog.
+
+The active layer is taken as input and the output is written to a new layer.
 
 If you have an active selection, only the selected area is processed and
-the rest is ignored. This can be useful to left axes or titles unchanged.
-
-If you do not have an active selection, the entire layer is processed.
+the rest is ignored. This can be useful to left axes or titles unchanged. If you
+do not have an active selection, the entire layer is processed.
 
 
 ## Release History
