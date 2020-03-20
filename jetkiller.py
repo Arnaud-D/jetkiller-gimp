@@ -125,7 +125,15 @@ class Dialog:
         for c in colormaps:
             self.store.append([c])
         self.cm_combobox.set_model(self.store)
-        self.cm_combobox.set_active(0)
+        try:
+            self.colormap = gimpshelf.shelf['colormap']
+        except KeyError:
+            self.colormap = _default_colormap
+        try:
+            idx = colormaps.index(self.colormap)
+            self.cm_combobox.set_active(idx)
+        except ValueError:  # should not happen, as the default colormap should exist
+            self.cm_combobox.set_active(0)
 
         self.dialog.vbox.pack_start(self.cm_combobox, False, False, 0)
         self.cm_combobox.show()
