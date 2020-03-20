@@ -3,6 +3,7 @@
 import gimp
 import gimpenums
 import gimpplugin
+import gimpshelf
 
 import pygtk
 import gtk
@@ -15,6 +16,7 @@ _nint = 255
 _type = int
 _cache_size = 1024
 _tile_cache_size = 16
+_default_colormap = "viridis"
 
 pygtk.require("2.0")
 
@@ -120,7 +122,6 @@ class Dialog:
         self.cm_combobox.pack_start(cell)
         self.cm_combobox.add_attribute(cell, 'text', 0)
         colormaps = ["viridis", "plasma", "inferno", "magma", "cividis"]
-        self.colormap = colormaps[0]  # default colormap
         for c in colormaps:
             self.store.append([c])
         self.cm_combobox.set_model(self.store)
@@ -188,12 +189,13 @@ class Jetkiller(gimpplugin.plugin):
         elif run_mode == gimpenums.RUN_NONINTERACTIVE:
             raise NotImplementedError("Non-interactive mode is not implemented (yet).")
         elif run_mode == gimpenums.RUN_WITH_LAST_VALS:
-            raise NotImplementedError("Repeat with last values is not implemented (yet).")
+            colormap = gimpshelf.shelf['colormap']
         else:
             raise ValueError("Invalid run mode. "
                              "Should be RUN_INTERACTIVE (0), RUN_NONINTERACTIVE (1) or RUN_WITH_LAST_VALS (2).")
 
         jetkiller(image, colormap)
+        gimpshelf.shelf['colormap'] = colormap
 
 
 if __name__ == '__main__':
