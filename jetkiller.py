@@ -149,14 +149,19 @@ class Dialog:
         button_ok.show()
 
         # Events
-        self.dialog.connect("destroy", gtk.main_quit)
         button_ok.connect("clicked", self.on_click_ok)
-        button_close.connect_object("clicked", gtk.Widget.destroy, self.dialog)
+        button_close.connect("clicked", self.close_action)
 
+        self.quit = False  # changed to true when dialog closed
         gtk.main()
 
     def on_click_ok(self, arg):
         self.colormap = self.cm_combobox.get_active_text()
+        self.dialog.destroy()
+        gtk.main_quit()
+
+    def close_action(self, arg):
+        self.quit = True
         self.dialog.destroy()
         gtk.main_quit()
 
@@ -193,6 +198,8 @@ class Jetkiller(gimpplugin.plugin):
     def jetkiller(self, run_mode, image):
         if run_mode == gimpenums.RUN_INTERACTIVE:
             dialog = Dialog(image)
+            if dialog.quit:
+                return
             colormap = dialog.colormap
         elif run_mode == gimpenums.RUN_NONINTERACTIVE:
             raise NotImplementedError("Non-interactive mode is not implemented (yet).")
