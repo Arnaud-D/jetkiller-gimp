@@ -35,20 +35,15 @@ def jetkiller(img, colormap, ignore_gray):
     gimp.pdb.gimp_image_undo_group_start(img)  # start undo group
     gimp.progress_init("Executing Jet Killer ...")
 
-    active_layer = gimp.pdb.gimp_image_get_active_layer(img)
-    new_layer = gimp.pdb.gimp_layer_new(img,
-                                        active_layer.width,
-                                        active_layer.height,
+    src_layer = gimp.pdb.gimp_image_get_active_layer(img)
+    dst_layer = gimp.pdb.gimp_layer_new(img,
+                                        src_layer.width, src_layer.height,
                                         gimpenums.RGBA_IMAGE,
-                                        active_layer.name + " - Jet Killer",
+                                        src_layer.name + " - Jet Killer",
                                         100.,
                                         gimpenums.NORMAL_MODE)
-    gimp.pdb.gimp_image_insert_layer(img, new_layer, None, 0)
-
-    (selection_exists, start_x, start_y, end_x, end_y) = gimp.pdb.gimp_selection_bounds(img)
-    if not selection_exists:
-        gimp.pdb.gimp_selection_all(img)
-        (_, start_x, start_y, end_x, end_y) = gimp.pdb.gimp_selection_bounds(img)
+    gimp.pdb.gimp_image_insert_layer(img, dst_layer, None, 0)  # on top
+    dst_layer.set_offsets(*src_layer.offsets)  # at the same position as the source
 
     input_cmap = get_colormap("jet")
     output_cmap = get_colormap(colormap)
@@ -71,31 +66,26 @@ def jetkiller(img, colormap, ignore_gray):
         return cache[px]
 
     gimp.tile_cache_ntiles(_tile_cache_size)
-    src_rgn = active_layer.get_pixel_rgn(start_x, start_y, end_x - start_x, end_y - start_y, False, False)
-    dst_rgn = new_layer.get_pixel_rgn(start_x, start_y, end_x - start_x, end_y - start_y, True, True)
+    src_rgn = src_layer.get_pixel_rgn(0, 0, src_layer.width, src_layer.height, False, False)
+    dst_rgn = dst_layer.get_pixel_rgn(0, 0, dst_layer.width, dst_layer.height, True, True)
 
-    for x in xrange(start_x, end_x):
-        for y in xrange(start_y, end_y):
+    for x in xrange(src_layer.width):
+        for y in xrange(src_layer.height):
             pixel = src_rgn[x, y]
             if not ignore_gray or (pixel[0] != pixel[1] or pixel[1] != pixel[2]):
-                new_pixel = convert_pixel(pixel[0:3])
-                if len(pixel) == 4:  # number of channels
-                    new_pixel_value = new_pixel + pixel[3]
+                new_rgb_pixel = convert_pixel(pixel[0:3])
+                if len(pixel) == 4:  # has an alpha channel
+                    new_rgba_pixel = new_rgb_pixel + pixel[3]
                 else:
-                    new_pixel_value = new_pixel + chr(255)
-                dst_rgn[x, y] = new_pixel_value
+                    new_rgba_pixel = new_rgb_pixel + chr(255)
+                dst_rgn[x, y] = new_rgba_pixel
 
-        progress_ratio = float(x - start_x) / (end_x - start_x)
-        gimp.progress_update(progress_ratio)  # update progress bar
+        gimp.progress_update(float(x) / src_layer.width)  # update progress bar
 
-    new_layer.flush()
-    new_layer.merge_shadow()
-    new_layer.update(start_x, start_y, end_x - start_x, end_y - start_y)
+    dst_layer.flush()
+    dst_layer.merge_shadow()
+    dst_layer.update(0, 0, dst_layer.width, dst_layer.height)
 
-    if not selection_exists:  # remove selection when added by the script
-        gimp.pdb.gimp_selection_none(img)
-
-    gimp.pdb.gimp_progress_end()
     gimp.pdb.gimp_displays_flush()
     gimp.pdb.gimp_image_undo_group_end(img)  # end undo group
 
