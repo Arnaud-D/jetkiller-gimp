@@ -17,7 +17,7 @@ _type = int
 _cache_size = 1024
 _tile_cache_size = 16
 _default_colormap = "viridis"
-_colormap_names = [k for k in cm.cmaps_listed.keys() if not "_r" in k]
+_colormap_names = [k for k in cm.cmaps_listed.keys() if "_r" not in k]
 _default_ignore_gray = True
 
 pygtk.require("2.0")
@@ -55,7 +55,7 @@ def jetkiller(img, colormap, ignore_gray):
         db = input_cmap[:, 2] - ord(px[2])
         dist = dr * dr + dg * dg + db * db
         idx = np.argmin(dist)
-        return "".join([chr(k) for k in output_cmap[idx]])
+        return "".join([chr(j) for j in output_cmap[idx]])
 
     cache = {}
 
@@ -91,7 +91,7 @@ def jetkiller(img, colormap, ignore_gray):
 
 
 class Dialog:
-    def __init__(self, img, colormap, ignore_gray):
+    def __init__(self, colormap, ignore_gray):
 
         # Dialog configuration
         self.dialog = gtk.Dialog()
@@ -149,13 +149,13 @@ class Dialog:
         self.quit = False  # changed to true when dialog closed
         gtk.main()
 
-    def on_click_ok(self, arg):
+    def on_click_ok(self, _):
         self.colormap = self.cm_combobox.get_active_text()
         self.ignore_gray = self.gray_checkbutton.get_active()
         self.dialog.destroy()
         gtk.main_quit()
 
-    def close_action(self, arg):
+    def close_action(self, _):
         self.quit = True
         self.dialog.destroy()
         gtk.main_quit()
@@ -204,7 +204,7 @@ class Jetkiller(gimpplugin.plugin):
             prev_ignore_gray = _default_ignore_gray
 
         if run_mode == gimpenums.RUN_INTERACTIVE:
-            dialog = Dialog(image, prev_colormap, prev_ignore_gray)
+            dialog = Dialog(prev_colormap, prev_ignore_gray)
             if dialog.quit:
                 return
             jetkiller(image, dialog.colormap, dialog.ignore_gray)
