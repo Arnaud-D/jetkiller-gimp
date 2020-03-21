@@ -17,6 +17,7 @@ _type = int
 _cache_size = 1024
 _tile_cache_size = 16
 _default_colormap = "viridis"
+_default_ignore_gray = True
 
 pygtk.require("2.0")
 
@@ -32,18 +33,15 @@ def get_colormap(colormap):
 
 
 def jetkiller(img, colormap, ignore_gray):
-    gimp.pdb.gimp_image_undo_group_start(img)  # start undo group
+    img.undo_group_start()
     gimp.progress_init("Executing Jet Killer ...")
 
-    src_layer = gimp.pdb.gimp_image_get_active_layer(img)
-    dst_layer = gimp.pdb.gimp_layer_new(img,
-                                        src_layer.width, src_layer.height,
-                                        gimpenums.RGBA_IMAGE,
-                                        src_layer.name + " - Jet Killer",
-                                        100.,
-                                        gimpenums.NORMAL_MODE)
-    gimp.pdb.gimp_image_insert_layer(img, dst_layer, None, 0)  # on top
+    src_layer = img.active_layer
+    w = src_layer.width
+    h = src_layer.height
+    dst_layer = gimp.Layer(img, src_layer.name + " - Jet Killer", w, h, gimpenums.RGBA_IMAGE)
     dst_layer.set_offsets(*src_layer.offsets)  # at the same position as the source
+    img.add_layer(dst_layer)  # on top by default
 
     input_cmap = get_colormap("jet")
     output_cmap = get_colormap(colormap)
@@ -86,12 +84,13 @@ def jetkiller(img, colormap, ignore_gray):
     dst_layer.merge_shadow()
     dst_layer.update(0, 0, dst_layer.width, dst_layer.height)
 
-    gimp.pdb.gimp_displays_flush()
-    gimp.pdb.gimp_image_undo_group_end(img)  # end undo group
+    gimp.pdb.gimp_progress_end()  # important for non-interactive mode
+    gimp.displays_flush()
+    img.undo_group_end()
 
 
 class Dialog:
-    def __init__(self, img):
+    def __init__(self, img, colormap, ignore_gray):
 
         # Dialog configuration
         self.dialog = gtk.Dialog()
@@ -115,10 +114,7 @@ class Dialog:
         for c in colormaps:
             self.store.append([c])
         self.cm_combobox.set_model(self.store)
-        try:
-            self.colormap = gimpshelf.shelf['colormap']
-        except KeyError:
-            self.colormap = _default_colormap
+        self.colormap = colormap
         try:
             idx = colormaps.index(self.colormap)
             self.cm_combobox.set_active(idx)
@@ -129,11 +125,8 @@ class Dialog:
         self.cm_combobox.show()
 
         # Ignore gray checkbox
+        self.ignore_gray = ignore_gray
         self.gray_checkbutton = gtk.CheckButton("Ignore gray pixels")
-        try:
-            self.ignore_gray = gimpshelf.shelf['ignore_gray']
-        except KeyError:
-            self.ignore_gray = True
         self.gray_checkbutton.set_active(self.ignore_gray)
         self.gray_checkbutton.show()
         self.dialog.vbox.pack_start(self.gray_checkbutton, True, True, 0)
@@ -179,7 +172,9 @@ class Jetkiller(gimpplugin.plugin):
         self.image_types = "RGB*"
         self.type = gimpenums.PLUGIN
         self.params = [(gimpenums.PDB_INT32, "run-mode", "Run mode"),
-                       (gimpenums.PDB_IMAGE, "image", "Input image")]
+                       (gimpenums.PDB_IMAGE, "image", "Input image"),
+                       (gimpenums.PDB_STRING, "colormap", "Output colormap (from matplotlib)"),
+                       (gimpenums.PDB_INT32, "ignore_gray", "If true, ignore gray pixels")]
         self.ret_vals = []
 
     def query(self):
@@ -196,25 +191,32 @@ class Jetkiller(gimpplugin.plugin):
             self.params,
             self.ret_vals)
 
-    def jetkiller(self, run_mode, image):
+    # Note: keyword arguments are not passed in interactive mode, but are mandatory (and actually non-keyword)
+    #       when in non-interactive mode.
+    def jetkiller(self, run_mode, image, colormap=_default_colormap, ignore_gray=_default_ignore_gray):
+        # Retrieve shelved parameters
+        try:
+            prev_colormap = gimpshelf.shelf['colormap']
+            prev_ignore_gray = gimpshelf.shelf['ignore_gray']
+        except KeyError:
+            prev_colormap = _default_colormap
+            prev_ignore_gray = _default_ignore_gray
+
         if run_mode == gimpenums.RUN_INTERACTIVE:
-            dialog = Dialog(image)
+            dialog = Dialog(image, prev_colormap, prev_ignore_gray)
             if dialog.quit:
                 return
-            colormap = dialog.colormap
-            ignore_gray = dialog.ignore_gray
+            jetkiller(image, dialog.colormap, dialog.ignore_gray)
+            # Shelf parameters
+            gimpshelf.shelf['colormap'] = dialog.colormap
+            gimpshelf.shelf['ignore_gray'] = dialog.ignore_gray
         elif run_mode == gimpenums.RUN_NONINTERACTIVE:
-            raise NotImplementedError("Non-interactive mode is not implemented (yet).")
+            jetkiller(image, colormap, ignore_gray)
         elif run_mode == gimpenums.RUN_WITH_LAST_VALS:
-            colormap = gimpshelf.shelf['colormap']
-            ignore_gray = gimpshelf.shelf['ignore_gray']
+            jetkiller(image, prev_colormap, prev_ignore_gray)
         else:
             raise ValueError("Invalid run mode. "
                              "Should be RUN_INTERACTIVE (0), RUN_NONINTERACTIVE (1) or RUN_WITH_LAST_VALS (2).")
-
-        jetkiller(image, colormap, ignore_gray)
-        gimpshelf.shelf['colormap'] = colormap
-        gimpshelf.shelf['ignore_gray'] = ignore_gray
 
 
 if __name__ == '__main__':
