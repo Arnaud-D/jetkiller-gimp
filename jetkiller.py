@@ -17,6 +17,7 @@ _type = int
 _cache_size = 1024
 _tile_cache_size = 16
 _default_colormap = "viridis"
+_colormap_names = [k for k in cm.cmaps_listed.keys() if not "_r" in k]
 _default_ignore_gray = True
 
 pygtk.require("2.0")
@@ -110,7 +111,7 @@ class Dialog:
         cell = gtk.CellRendererText()
         self.cm_combobox.pack_start(cell)
         self.cm_combobox.add_attribute(cell, 'text', 0)
-        colormaps = ["viridis", "plasma", "inferno", "magma", "cividis"]
+        colormaps = _colormap_names  # ["viridis", "plasma", "inferno", "magma", "cividis"]
         for c in colormaps:
             self.store.append([c])
         self.cm_combobox.set_model(self.store)
